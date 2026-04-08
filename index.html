@@ -164,7 +164,7 @@ body{font-family:var(--font-ui);background:var(--surface2);color:var(--text);max
         <div class="field"><label>Date</label><input type="date" id="book-date"></div>
         <div class="field"><label>Time slot</label><select id="book-slot"><option value="">Select date first...</option></select></div>
         <div class="field"><label>Boat</label><select id="book-boat"><option value="">Select boat...</option></select></div>
-        <div class="field"><label>Crew members (min 1)</label><select id="book-crew-select"><option value="">Add crew member...</option></select><div class="crew-list" id="crew-list"></div></div>
+        <div class="field"><label id="crew-label">Crew members (min 1, select boat first)</label><select id="book-crew-select"><option value="">Add crew member...</option></select><div class="crew-list" id="crew-list"></div></div>
         <button class="btn-book" onclick="submitBooking()">Request booking</button>
       </div>
       <div class="section-title">Your bookings</div>
@@ -234,7 +234,8 @@ body{font-family:var(--font-ui);background:var(--surface2);color:var(--text);max
       <input type="hidden" id="edit-boat-id">
       <div class="field"><label>Boat name</label><input type="text" id="b-name" placeholder="e.g. Tempest"></div>
       <div class="field"><label>Type</label><select id="b-type"><option value="1x">1x - Single scull</option><option value="2x">2x - Double scull</option><option value="2-">2- - Coxless pair</option><option value="4-">4- - Coxless four</option><option value="4+">4+ - Coxed four</option><option value="4x">4x - Quad scull</option><option value="8+">8+ - Coxed eight</option><option value="8x">8x - Octuple scull</option></select></div>
-      <div class="field"><label>Primary squad</label><select id="b-primary-squad"><option value="">No primary squad</option></select></div>
+      <div class="field"><label>Squads allowed to use this boat</label><div id="b-squads-checkboxes" style="display:flex;flex-direction:column;gap:6px;margin-top:4px"></div></div>
+      <div class="field"><label>Primary squad (auto-approves bookings)</label><select id="b-primary-squad"><option value="">No primary squad</option></select></div>
       <div class="field"><label>Max weight (kg)</label><input type="number" id="b-weight" placeholder="e.g. 70"></div>
       <div class="field"><label>Private (not bookable)</label><select id="b-private"><option value="false">No - available to book</option><option value="true">Yes - private</option></select></div>
       <div class="field"><label>Active</label><select id="b-active"><option value="true">Yes</option><option value="false">No</option></select></div>
@@ -404,6 +405,11 @@ function bookingCard(b){
 }
 
 async function initWaterBooking(){
+  // Ensure members are loaded
+  if(allMembers.length===0){
+    const{data}=await sb.from("profiles").select("id,full_name,squad_id").order("full_name");
+    allMembers=data||[];
+  }
   const di=document.getElementById("book-date");
   di.min=new Date().toISOString().split("T")[0];
   if(!di.value)di.value=di.min;
@@ -411,9 +417,18 @@ async function initWaterBooking(){
   const cs=document.getElementById("book-crew-select");
   cs.innerHTML="<option value=''>Add crew member...</option>"+allMembers.filter(m=>m.id!==currentUser.id).map(m=>`<option value="${m.id}">${m.full_name}</option>`).join("");
   cs.onchange=function(){if(!this.value)return;const m=allMembers.find(x=>x.id===this.value);if(m&&!selectedCrew.find(c=>c.id===m.id)){selectedCrew.push(m);renderCrew();}this.value="";};
+  const boatSeatsMap={"1x":1,"2x":2,"2-":2,"4-":4,"4x":4,"4+":5,"8+":9,"8x":9};
   const bs=document.getElementById("book-boat");
   const bookableBoats=allBoats.filter(b=>!b.is_private);
-  bs.innerHTML="<option value=''>Select boat...</option>"+bookableBoats.map(b=>`<option value="${b.id}">${b.name} (${b.type})${b.max_weight_kg?" - max "+b.max_weight_kg+"kg":""}</option>`).join("");
+  bs.innerHTML="<option value=''>Select boat...</option>"+bookableBoats.map(b=>`<option value="${b.id}">${b.name} (${b.type}, ${boatSeatsMap[b.type]||1} seat${(boatSeatsMap[b.type]||1)>1?"s":""})${b.max_weight_kg?" max "+b.max_weight_kg+"kg":""}</option>`).join("");
+  bs.onchange=function(){
+    const b=allBoats.find(x=>x.id===this.value);
+    if(b){
+      const seats=boatSeatsMap[b.type]||1;
+      const crewNeeded=seats-1;
+      document.getElementById("crew-label").textContent=b.type==="1x"?"No crew needed (single scull)":`Crew members (min 1, max ${crewNeeded} for a ${b.type})`;
+    }
+  };
   selectedCrew=[];renderCrew();
   await loadSlotsForDate();
   await loadMyBookings();
@@ -437,7 +452,14 @@ async function submitBooking(){
   const slotId=document.getElementById("book-slot").value;
   const boatId=document.getElementById("book-boat").value;
   if(!dateVal||!slotId||!boatId)return alert("Please select a date, time slot and boat.");
-  if(selectedCrew.length===0)return alert("Please add at least one crew member.");
+  const boatSeats={"1x":1,"2x":2,"2-":2,"4-":4,"4x":4,"4+":5,"8+":9,"8x":9};
+  const seats=boatSeats[boat?.type]||1;
+  if(boat?.type!=="1x" && selectedCrew.length===0){
+    return alert("Please add at least one crew member.");
+  }
+  if(selectedCrew.length>seats-1){
+    return alert("Too many crew members. A "+boat?.type+" has "+seats+" seats (including you). Please remove "+(selectedCrew.length-(seats-1))+" crew member(s).");
+  }
   const boat=allBoats.find(b=>b.id===boatId);
 
   // Check boat is allocated to member's squad
@@ -650,8 +672,17 @@ function openBoatModal(b){
   document.getElementById("b-weight").value=b?.max_weight_kg||"";
   document.getElementById("b-private").value=b?.is_private===true?"true":"false";
   document.getElementById("b-active").value=b?.active===false?"false":"true";
-  const ps=document.getElementById("b-primary-squad");
+  // Populate squad checkboxes
+  const currentSquadIds=b?.boat_squads?.map(bs=>bs.squad_id)||[];
   const primary=b?.boat_squads?.find(bs=>bs.is_primary);
+  const cbContainer=document.getElementById("b-squads-checkboxes");
+  cbContainer.innerHTML=allSquads.map(s=>`
+    <label style="display:flex;align-items:center;gap:8px;font-size:14px;cursor:pointer">
+      <input type="checkbox" value="${s.id}" ${currentSquadIds.includes(s.id)?"checked":""} style="width:16px;height:16px;accent-color:var(--green)">
+      ${s.name}
+    </label>`).join("");
+  // Populate primary squad select
+  const ps=document.getElementById("b-primary-squad");
   ps.innerHTML='<option value="">No primary squad</option>'+allSquads.map(s=>`<option value="${s.id}"${primary?.squad_id===s.id?" selected":""}>${s.name}</option>`).join("");
   document.getElementById("boat-modal").classList.add("open");
 }
@@ -674,9 +705,16 @@ async function saveBoat(){
     if(error)return alert("Error: "+error.message);
     boatId=data.id;
   }
-  if(primarySquadId){
+  // Get all checked squads
+  const checkedSquads=[...document.querySelectorAll("#b-squads-checkboxes input:checked")].map(cb=>cb.value);
+  if(checkedSquads.length>0){
     await sb.from("boat_squads").delete().eq("boat_id",boatId);
-    await sb.from("boat_squads").insert({boat_id:boatId,squad_id:primarySquadId,is_primary:true});
+    const squadInserts=checkedSquads.map(sid=>({
+      boat_id:boatId,
+      squad_id:sid,
+      is_primary:sid===primarySquadId
+    }));
+    await sb.from("boat_squads").insert(squadInserts);
   }
   closeBoatModal();await loadAdminBoats();await loadGlobalData();
 }
