@@ -264,6 +264,7 @@ const SURL="https://oxfjqgufxdxyyyuudyjp.supabase.co";
 const SKEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im94ZmpxZ3VmeGR4eXl5dXVkeWpwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU2MzMyOTAsImV4cCI6MjA5MTIwOTI5MH0.VQ4nA6HDKkR4U_E6yXwnD3ePBqLU8tU8YNuDMGJjwso";
 const {createClient}=supabase;
 const sb=createClient(SURL,SKEY);
+window.sb=sb;
 let currentUser=null,currentProfile=null,currentChannel=null,isSignUp=false,msgSub=null;
 let allSquads=[],allMembers=[],allBoats=[],allSlots=[],selectedCrew=[];
 let currentResource="water",currentDay=new Date().getDay();
@@ -323,7 +324,8 @@ async function handleAuth(){
 
 async function onSignedIn(user){
   currentUser=user;
-  const{data:profile}=await sb.from("profiles").select("*,squads(name)").eq("id",user.id).single();
+  const{data:profile,error:profileError}=await sb.from("profiles").select("*,squads(name)").eq("id",user.id).single();
+if(profileError)console.error("Profile error:",profileError.message);
   currentProfile=profile;
   const initials=profile?profile.full_name.split(" ").map(n=>n[0]).join("").toUpperCase().slice(0,2):"??";
   document.getElementById("user-avatar").textContent=initials;
