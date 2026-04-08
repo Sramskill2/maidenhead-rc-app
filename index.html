@@ -105,6 +105,20 @@ body{font-family:var(--font-ui);background:var(--surface2);color:var(--text);min
 .send-btn{width:42px;height:42px;border-radius:50%;background:var(--green);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0}
 .send-btn svg{width:18px;height:18px;fill:none;stroke:white;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 .loading,.empty{text-align:center;padding:2rem;color:var(--text-muted);font-size:14px}
+.admin-bar{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+.btn-add{padding:8px 14px;background:var(--green);color:white;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;font-family:var(--font-ui)}
+.btn-edit{padding:4px 10px;font-size:12px;border:1px solid var(--border);border-radius:6px;background:white;cursor:pointer;font-family:var(--font-ui);color:var(--text-muted)}
+.btn-danger{padding:4px 10px;font-size:12px;border:1px solid #fcc;border-radius:6px;background:#fee;cursor:pointer;font-family:var(--font-ui);color:#c00}
+.modal-overlay{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:200;align-items:flex-end;justify-content:center}
+.modal-overlay.open{display:flex}
+.modal{background:white;border-radius:24px 24px 0 0;padding:1.5rem;width:100%;max-width:430px;max-height:85vh;overflow-y:auto}
+.modal h3{font-size:18px;font-weight:600;margin-bottom:1rem}
+.modal-footer{display:flex;gap:8px;margin-top:1rem}
+.btn-cancel{flex:1;padding:12px;background:#f0f0f0;color:var(--text);border:none;border-radius:8px;font-size:15px;font-weight:600;cursor:pointer;font-family:var(--font-ui)}
+.btn-save{flex:2;padding:12px;background:var(--green);color:white;border:none;border-radius:8px;font-size:15px;font-weight:600;cursor:pointer;font-family:var(--font-ui)}
+.admin-tab{display:flex;gap:8px;margin-bottom:16px}
+.atab{flex:1;padding:8px;border:1.5px solid var(--border);border-radius:8px;background:white;font-size:12px;font-weight:600;cursor:pointer;color:var(--text-muted);font-family:var(--font-ui);text-align:center}
+.atab.active{background:var(--green);color:white;border-color:var(--green)}
 </style>
 </head>
 <body>
@@ -179,12 +193,71 @@ body{font-family:var(--font-ui);background:var(--surface2);color:var(--text);min
       <div class="card"><div id="members-list"><div class="loading">Loading...</div></div></div>
     </div>
   </div>
+  <div class="page" id="page-admin">
+    <div class="section-title">Club admin</div>
+    <div class="admin-tab">
+      <button class="atab active" onclick="setAdminTab('members',this)">Members</button>
+      <button class="atab" onclick="setAdminTab('boats',this)">Boats</button>
+      <button class="atab" onclick="setAdminTab('blades',this)">Blades</button>
+    </div>
+    <div id="admin-members">
+      <div class="admin-bar"><span style="font-size:13px;color:var(--text-muted)" id="member-count"></span><button class="btn-add" onclick="openMemberModal()">+ Add member</button></div>
+      <div id="admin-members-list"><div class="loading">Loading...</div></div>
+    </div>
+    <div id="admin-boats" style="display:none">
+      <div class="admin-bar"><span style="font-size:13px;color:var(--text-muted)" id="boat-count"></span><button class="btn-add" onclick="openBoatModal()">+ Add boat</button></div>
+      <div id="admin-boats-list"><div class="loading">Loading...</div></div>
+    </div>
+    <div id="admin-blades" style="display:none">
+      <div class="admin-bar"><span style="font-size:13px;color:var(--text-muted)" id="blade-count"></span><button class="btn-add" onclick="openBladeModal()">+ Add blade set</button></div>
+      <div id="admin-blades-list"><div class="loading">Loading...</div></div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="member-modal">
+    <div class="modal">
+      <h3 id="member-modal-title">Add member</h3>
+      <input type="hidden" id="edit-member-id">
+      <div class="field"><label>Full name</label><input type="text" id="m-name" placeholder="Full name"></div>
+      <div class="field"><label>Email</label><input type="email" id="m-email" placeholder="email@example.com"></div>
+      <div class="field"><label>Mobile</label><input type="tel" id="m-mobile" placeholder="07700 000000"></div>
+      <div class="field"><label>Car registration</label><input type="text" id="m-carreg" placeholder="AB12 CDE"></div>
+      <div class="field"><label>Squad</label><select id="m-squad"><option value="">No squad</option></select></div>
+      <div class="field"><label>Role</label><select id="m-role"><option value="member">Member</option><option value="coach">Coach</option><option value="admin">Admin</option></select></div>
+      <div class="modal-footer"><button class="btn-cancel" onclick="closeMemberModal()">Cancel</button><button class="btn-save" onclick="saveMember()">Save</button></div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="boat-modal">
+    <div class="modal">
+      <h3 id="boat-modal-title">Add boat</h3>
+      <input type="hidden" id="edit-boat-id">
+      <div class="field"><label>Boat name</label><input type="text" id="b-name" placeholder="e.g. Tempest"></div>
+      <div class="field"><label>Type</label><select id="b-type"><option value="1x">1x - Single scull</option><option value="2x">2x - Double scull</option><option value="2-">2- - Coxless pair</option><option value="4-">4- - Coxless four</option><option value="4+">4+ - Coxed four</option><option value="4x">4x - Quad scull</option><option value="8+">8+ - Coxed eight</option><option value="8x">8x - Octuple scull</option></select></div>
+      <div class="field"><label>Primary squad</label><select id="b-primary-squad"><option value="">No primary squad</option></select></div>
+      <div class="field"><label>Active</label><select id="b-active"><option value="true">Yes</option><option value="false">No</option></select></div>
+      <div class="modal-footer"><button class="btn-cancel" onclick="closeBoatModal()">Cancel</button><button class="btn-save" onclick="saveBoat()">Save</button></div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="blade-modal">
+    <div class="modal">
+      <h3 id="blade-modal-title">Add blade set</h3>
+      <input type="hidden" id="edit-blade-id">
+      <div class="field"><label>Set number</label><input type="text" id="bl-number" placeholder="e.g. BL-01"></div>
+      <div class="field"><label>Allocated to boat</label><select id="bl-boat"><option value="">Not allocated</option></select></div>
+      <div class="field"><label>Notes</label><input type="text" id="bl-notes" placeholder="Optional notes"></div>
+      <div class="modal-footer"><button class="btn-cancel" onclick="closeBladeModal()">Cancel</button><button class="btn-save" onclick="saveBlade()">Save</button></div>
+    </div>
+  </div>
+
   <nav class="bottom-nav">
     <button class="nav-item active" onclick="navTo('home',this)"><svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9,22 9,12 15,12 15,22"/></svg><span>Home</span></button>
     <button class="nav-item" onclick="navTo('water',this)"><svg viewBox="0 0 24 24"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg><span>Book Water</span></button>
     <button class="nav-item" onclick="navTo('timetable',this)"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg><span>Timetable</span></button>
     <button class="nav-item" onclick="navTo('chat',this)"><svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg><span>Chat</span></button>
     <button class="nav-item" onclick="navTo('members',this)"><svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg><span>Members</span></button>
+    <button class="nav-item" id="admin-nav-btn" style="display:none" onclick="navTo('admin',this)"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M12 14c-6 0-8 2-8 4v1h16v-1c0-2-2-4-8-4z"/><line x1="18" y1="2" x2="22" y2="6"/><line x1="22" y1="2" x2="18" y2="6"/></svg><span>Admin</span></button>
   </nav>
 </div><script>
 const SURL="https://oxfjqgufxdxyyyuudyjp.supabase.co";
@@ -262,6 +335,9 @@ async function onSignedIn(user){
   document.getElementById("greeting-name").textContent=`${time}, ${firstName}!`;
   document.getElementById("greeting-date").textContent=new Date().toLocaleDateString("en-GB",{weekday:"long",day:"numeric",month:"long",year:"numeric"});
   await loadGlobalData();
+  if(currentProfile && (currentProfile.role==="admin" || currentProfile.role==="coach")){
+    document.getElementById("admin-nav-btn").style.display="flex";
+  }
   loadHome();
 }
 
@@ -293,6 +369,8 @@ function navTo(page,el){
   else if(page==="timetable")initTimetable();
   else if(page==="chat")loadChat();
   else if(page==="members")loadMembers();
+  else if(page==="admin"){setAdminTab("members",document.querySelector(".atab"));loadAdminMembers();}
+  else if(page==="admin"){setAdminTab("members",document.querySelector(".atab"));loadAdminMembers();}
 }
 
 async function loadHome(){
@@ -417,3 +495,186 @@ function cap(s){return s?s.charAt(0).toUpperCase()+s.slice(1):"";}
 </script>
 </body>
 </html>
+<script>
+// ── Admin functions ───────────────────────────────────────────
+let currentAdminTab="members";
+
+function setAdminTab(tab,el){
+  currentAdminTab=tab;
+  document.querySelectorAll(".atab").forEach(t=>t.classList.remove("active"));
+  el.classList.add("active");
+  ["members","boats","blades"].forEach(t=>{
+    document.getElementById("admin-"+t).style.display=t===tab?"block":"none";
+  });
+  if(tab==="members")loadAdminMembers();
+  else if(tab==="boats")loadAdminBoats();
+  else if(tab==="blades")loadAdminBlades();
+}
+
+async function loadAdminMembers(){
+  const{data}=await sb.from("profiles").select("*,squads(name)").order("full_name");
+  document.getElementById("member-count").textContent=(data?.length||0)+" members";
+  const el=document.getElementById("admin-members-list");
+  if(!data||data.length===0){el.innerHTML='<div class="empty">No members yet</div>';return;}
+  el.innerHTML=data.map(m=>{
+    const ini=m.full_name.split(" ").map(n=>n[0]).join("").toUpperCase().slice(0,2);
+    const mJson=encodeURIComponent(JSON.stringify(m));
+    return `<div class="card" style="padding:12px"><div style="display:flex;align-items:center;gap:10px">
+      <div class="avatar" style="width:36px;height:36px;font-size:13px">${ini}</div>
+      <div style="flex:1">
+        <div style="font-weight:600;font-size:14px">${m.full_name}</div>
+        <div style="font-size:12px;color:var(--text-muted)">${m.email||""}${m.mobile?" | "+m.mobile:""}</div>
+        <div style="font-size:12px;color:var(--text-muted)">${m.squads?.name||"No squad"}${m.car_reg?" | "+m.car_reg:""}</div>
+      </div>
+      <button class="btn-edit" onclick="editMemberById('${m.id}')">Edit</button>
+    </div></div>`;
+  }).join("");
+}
+
+async function editMemberById(id){
+  const{data:m}=await sb.from("profiles").select("*").eq("id",id).single();
+  openMemberModal(m);
+}
+
+async function loadAdminBoats(){
+  const{data}=await sb.from("boats").select("*,boat_squads(squad_id,is_primary,squads(name)),blades(set_number)").order("name");
+  document.getElementById("boat-count").textContent=(data?.length||0)+" boats";
+  const el=document.getElementById("admin-boats-list");
+  if(!data||data.length===0){el.innerHTML='<div class="empty">No boats yet</div>';return;}
+  el.innerHTML=data.map(b=>{
+    const primary=b.boat_squads?.find(bs=>bs.is_primary);
+    const blade=b.blades?.[0];
+    return `<div class="card" style="padding:12px"><div style="display:flex;align-items:center;gap:10px">
+      <div style="flex:1">
+        <div style="font-weight:600;font-size:14px">${b.name} <span style="font-size:12px;color:var(--text-muted)">(${b.type} - ${b.blade_count} blades)</span></div>
+        <div style="font-size:12px;color:var(--text-muted)">Primary: ${primary?.squads?.name||"None"} | Blades: ${blade?.set_number||"None"}</div>
+        <span class="badge ${b.active?"badge-green":"badge-gray"}" style="margin-top:4px;display:inline-block">${b.active?"Active":"Inactive"}</span>
+      </div>
+      <button class="btn-edit" onclick="editBoatById('${b.id}')">Edit</button>
+    </div></div>`;
+  }).join("");
+}
+
+async function editBoatById(id){
+  const{data:b}=await sb.from("boats").select("*,boat_squads(squad_id,is_primary)").eq("id",id).single();
+  openBoatModal(b);
+}
+
+async function loadAdminBlades(){
+  const{data}=await sb.from("blades").select("*,boats(name,type)").order("set_number");
+  document.getElementById("blade-count").textContent=(data?.length||0)+" blade sets";
+  const el=document.getElementById("admin-blades-list");
+  if(!data||data.length===0){el.innerHTML='<div class="empty">No blade sets yet</div>';return;}
+  el.innerHTML=data.map(bl=>`<div class="card" style="padding:12px"><div style="display:flex;align-items:center;gap:10px">
+    <div style="flex:1">
+      <div style="font-weight:600;font-size:14px">Set ${bl.set_number}</div>
+      <div style="font-size:12px;color:var(--text-muted)">Allocated to: ${bl.boats?.name||"Unallocated"}${bl.boats?" ("+bl.boats.type+")":""}</div>
+      ${bl.notes?`<div style="font-size:12px;color:var(--text-muted)">${bl.notes}</div>`:""}
+    </div>
+    <button class="btn-edit" onclick="editBladeById('${bl.id}')">Edit</button>
+  </div></div>`).join("");
+}
+
+async function editBladeById(id){
+  const{data:bl}=await sb.from("blades").select("*").eq("id",id).single();
+  openBladeModal(bl);
+}
+
+function openMemberModal(m){
+  document.getElementById("member-modal-title").textContent=m&&m.id?"Edit member":"Add member";
+  document.getElementById("edit-member-id").value=m?.id||"";
+  document.getElementById("m-name").value=m?.full_name||"";
+  document.getElementById("m-email").value=m?.email||"";
+  document.getElementById("m-mobile").value=m?.mobile||"";
+  document.getElementById("m-carreg").value=m?.car_reg||"";
+  document.getElementById("m-role").value=m?.role||"member";
+  const sq=document.getElementById("m-squad");
+  sq.innerHTML='<option value="">No squad</option>'+allSquads.map(s=>`<option value="${s.id}"${m?.squad_id===s.id?" selected":""}>${s.name}</option>`).join("");
+  document.getElementById("member-modal").classList.add("open");
+}
+function closeMemberModal(){document.getElementById("member-modal").classList.remove("open");}
+
+async function saveMember(){
+  const id=document.getElementById("edit-member-id").value;
+  const payload={
+    full_name:document.getElementById("m-name").value.trim(),
+    email:document.getElementById("m-email").value.trim(),
+    mobile:document.getElementById("m-mobile").value.trim()||null,
+    car_reg:document.getElementById("m-carreg").value.trim().toUpperCase().replace(/\s/g,"")||null,
+    squad_id:document.getElementById("m-squad").value||null,
+    role:document.getElementById("m-role").value
+  };
+  if(!payload.full_name)return alert("Name is required");
+  if(id){
+    const{error}=await sb.from("profiles").update(payload).eq("id",id);
+    if(error)return alert("Error: "+error.message);
+  }else{
+    alert("Ask the member to register via the app. Their profile will appear here automatically.");
+    closeMemberModal();return;
+  }
+  closeMemberModal();await loadAdminMembers();await loadGlobalData();
+}
+
+function openBoatModal(b){
+  document.getElementById("boat-modal-title").textContent=b&&b.id?"Edit boat":"Add boat";
+  document.getElementById("edit-boat-id").value=b?.id||"";
+  document.getElementById("b-name").value=b?.name||"";
+  document.getElementById("b-type").value=b?.type||"1x";
+  document.getElementById("b-active").value=b?.active===false?"false":"true";
+  const ps=document.getElementById("b-primary-squad");
+  const primary=b?.boat_squads?.find(bs=>bs.is_primary);
+  ps.innerHTML='<option value="">No primary squad</option>'+allSquads.map(s=>`<option value="${s.id}"${primary?.squad_id===s.id?" selected":""}>${s.name}</option>`).join("");
+  document.getElementById("boat-modal").classList.add("open");
+}
+function closeBoatModal(){document.getElementById("boat-modal").classList.remove("open");}
+
+async function saveBoat(){
+  const id=document.getElementById("edit-boat-id").value;
+  const name=document.getElementById("b-name").value.trim();
+  const type=document.getElementById("b-type").value;
+  const active=document.getElementById("b-active").value==="true";
+  const primarySquadId=document.getElementById("b-primary-squad").value;
+  if(!name)return alert("Boat name is required");
+  let boatId=id;
+  if(id){
+    await sb.from("boats").update({name,type,active}).eq("id",id);
+  }else{
+    const{data,error}=await sb.from("boats").insert({name,type,active}).select().single();
+    if(error)return alert("Error: "+error.message);
+    boatId=data.id;
+  }
+  if(primarySquadId){
+    await sb.from("boat_squads").delete().eq("boat_id",boatId);
+    await sb.from("boat_squads").insert({boat_id:boatId,squad_id:primarySquadId,is_primary:true});
+  }
+  closeBoatModal();await loadAdminBoats();await loadGlobalData();
+}
+
+function openBladeModal(bl){
+  document.getElementById("blade-modal-title").textContent=bl&&bl.id?"Edit blade set":"Add blade set";
+  document.getElementById("edit-blade-id").value=bl?.id||"";
+  document.getElementById("bl-number").value=bl?.set_number||"";
+  document.getElementById("bl-notes").value=bl?.notes||"";
+  const bb=document.getElementById("bl-boat");
+  bb.innerHTML='<option value="">Not allocated</option>'+allBoats.map(b=>`<option value="${b.id}"${bl?.boat_id===b.id?" selected":""}>${b.name} (${b.type})</option>`).join("");
+  document.getElementById("blade-modal").classList.add("open");
+}
+function closeBladeModal(){document.getElementById("blade-modal").classList.remove("open");}
+
+async function saveBlade(){
+  const id=document.getElementById("edit-blade-id").value;
+  const payload={
+    set_number:document.getElementById("bl-number").value.trim(),
+    boat_id:document.getElementById("bl-boat").value||null,
+    notes:document.getElementById("bl-notes").value.trim()||null
+  };
+  if(!payload.set_number)return alert("Set number is required");
+  if(id){
+    await sb.from("blades").update(payload).eq("id",id);
+  }else{
+    const{error}=await sb.from("blades").insert(payload);
+    if(error)return alert("Error: "+error.message);
+  }
+  closeBladeModal();await loadAdminBlades();
+}
+</script>
