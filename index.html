@@ -492,12 +492,9 @@ async function loadMembers(){
   el.innerHTML=data.map(m=>{const ini=m.full_name.split(" ").map(n=>n[0]).join("").toUpperCase().slice(0,2);return `<div class="member-row"><div class="avatar">${ini}</div><div class="member-info"><h4>${m.full_name}</h4><p>${m.squads?.name||"No squad"}</p></div><span class="badge badge-green" style="margin-left:auto">${cap(m.role||"member")}</span></div>`;}).join("");
 }
 
-function fmt(d){return new Date(d+"T00:00:00").toLocaleDateString("en-GB",{weekday:"short",day:"numeric",month:"short"});}
 function cap(s){return s?s.charAt(0).toUpperCase()+s.slice(1):"";}
-</script>
-</body>
-</html>
-<script>
+
+
 // ── Admin functions ───────────────────────────────────────────
 let currentAdminTab="members";
 
@@ -679,4 +676,8 @@ async function saveBlade(){
   }
   closeBladeModal();await loadAdminBlades();
 }
+
+function fmt(d){return new Date(d+"T00:00:00").toLocaleDateString("en-GB",{weekday:"short",day:"numeric",month:"short"});}
 </script>
+</body>
+</html>
