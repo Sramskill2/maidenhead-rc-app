@@ -235,6 +235,8 @@ body{font-family:var(--font-ui);background:var(--surface2);color:var(--text);max
       <div class="field"><label>Boat name</label><input type="text" id="b-name" placeholder="e.g. Tempest"></div>
       <div class="field"><label>Type</label><select id="b-type"><option value="1x">1x - Single scull</option><option value="2x">2x - Double scull</option><option value="2-">2- - Coxless pair</option><option value="4-">4- - Coxless four</option><option value="4+">4+ - Coxed four</option><option value="4x">4x - Quad scull</option><option value="8+">8+ - Coxed eight</option><option value="8x">8x - Octuple scull</option></select></div>
       <div class="field"><label>Primary squad</label><select id="b-primary-squad"><option value="">No primary squad</option></select></div>
+      <div class="field"><label>Max weight (kg)</label><input type="number" id="b-weight" placeholder="e.g. 70"></div>
+      <div class="field"><label>Private (not bookable)</label><select id="b-private"><option value="false">No - available to book</option><option value="true">Yes - private</option></select></div>
       <div class="field"><label>Active</label><select id="b-active"><option value="true">Yes</option><option value="false">No</option></select></div>
       <div class="modal-footer"><button class="btn-cancel" onclick="closeBoatModal()">Cancel</button><button class="btn-save" onclick="saveBoat()">Save</button></div>
     </div>
@@ -275,7 +277,7 @@ document.getElementById("auth-password").addEventListener("keydown",e=>{if(e.key
 document.getElementById("auth-toggle-link").addEventListener("click",toggleAuthMode);
 
 async function loadSquadsForAuth(){
-  const{data}=await sb.from("squads").select("id,name").order("name");
+  const{data}=await sb.from("squads").select("id,name,timetable_group").order("name");
   if(data){allSquads=data;const sel=document.getElementById("auth-squad");
   sel.innerHTML="<option value=''>Select your squad...</option>"+data.map(s=>`<option value="${s.id}">${s.name}</option>`).join("");}
 }
@@ -347,7 +349,7 @@ if(profileError)console.error("Profile error:",profileError.message);
 
 async function loadGlobalData(){
   const[sq,mb,bt,sl]=await Promise.all([
-    sb.from("squads").select("id,name,captain_id").order("name"),
+    sb.from("squads").select("id,name,captain_id,timetable_group").order("name"),
     sb.from("profiles").select("id,full_name,squad_id").order("full_name"),
     sb.from("boats").select("*,boat_squads(squad_id,is_primary)").eq("active",true).order("name"),
     sb.from("timetable_slots").select("*").order("day_of_week").order("start_time")
@@ -410,7 +412,8 @@ async function initWaterBooking(){
   cs.innerHTML="<option value=''>Add crew member...</option>"+allMembers.filter(m=>m.id!==currentUser.id).map(m=>`<option value="${m.id}">${m.full_name}</option>`).join("");
   cs.onchange=function(){if(!this.value)return;const m=allMembers.find(x=>x.id===this.value);if(m&&!selectedCrew.find(c=>c.id===m.id)){selectedCrew.push(m);renderCrew();}this.value="";};
   const bs=document.getElementById("book-boat");
-  bs.innerHTML="<option value=''>Select boat...</option>"+allBoats.map(b=>`<option value="${b.id}">${b.name} (${b.type})</option>`).join("");
+  const bookableBoats=allBoats.filter(b=>!b.is_private);
+  bs.innerHTML="<option value=''>Select boat...</option>"+bookableBoats.map(b=>`<option value="${b.id}">${b.name} (${b.type})${b.max_weight_kg?" - max "+b.max_weight_kg+"kg":""}</option>`).join("");
   selectedCrew=[];renderCrew();
   await loadSlotsForDate();
   await loadMyBookings();
@@ -436,6 +439,21 @@ async function submitBooking(){
   if(!dateVal||!slotId||!boatId)return alert("Please select a date, time slot and boat.");
   if(selectedCrew.length===0)return alert("Please add at least one crew member.");
   const boat=allBoats.find(b=>b.id===boatId);
+
+  // Check boat is allocated to member's squad
+  const boatSquadIds=boat?.boat_squads?.map(bs=>bs.squad_id)||[];
+  if(boatSquadIds.length>0 && !boatSquadIds.includes(currentProfile?.squad_id)){
+    return alert("This boat is not allocated to your squad. Please choose a different boat or contact your squad captain.");
+  }
+
+  // Check slot is valid for member's timetable group
+  const slot=allSlots.find(s=>s.id===slotId);
+  const memberGroup=allSquads.find(s=>s.id===currentProfile?.squad_id)?.timetable_group;
+  if(slot && slot.access_type==="squad" && slot.label!==memberGroup){
+    return alert("This time slot is for "+slot.label+" only. Your group ("+memberGroup+") cannot book this slot.");
+  }
+
+  // Auto-approve if member's squad is primary squad for boat
   const isPrimary=boat?.boat_squads?.some(bs=>bs.squad_id===currentProfile?.squad_id&&bs.is_primary);
   const status=isPrimary?"approved":"pending";
   const{data:booking,error}=await sb.from("water_bookings").insert({timetable_slot_id:slotId,boat_id:boatId,booked_by:currentUser.id,booking_date:dateVal,status}).select().single();
@@ -556,7 +574,8 @@ async function loadAdminBoats(){
       <div style="flex:1">
         <div style="font-weight:600;font-size:14px">${b.name} <span style="font-size:12px;color:var(--text-muted)">(${b.type} - ${b.blade_count} blades)</span></div>
         <div style="font-size:12px;color:var(--text-muted)">Primary: ${primary?.squads?.name||"None"} | Blades: ${blade?.set_number||"None"}</div>
-        <span class="badge ${b.active?"badge-green":"badge-gray"}" style="margin-top:4px;display:inline-block">${b.active?"Active":"Inactive"}</span>
+        <div style="font-size:12px;color:var(--text-muted)">Max weight: ${b.max_weight_kg?b.max_weight_kg+"kg":"Not set"}</div>
+        <div style="margin-top:4px;display:flex;gap:4px"><span class="badge ${b.active?"badge-green":"badge-gray"}">${b.active?"Active":"Inactive"}</span>${b.is_private?"<span class=\"badge badge-amber\">Private</span>":""}</div>
       </div>
       <button class="btn-edit" onclick="editBoatById('${b.id}')">Edit</button>
     </div></div>`;
@@ -628,6 +647,8 @@ function openBoatModal(b){
   document.getElementById("edit-boat-id").value=b?.id||"";
   document.getElementById("b-name").value=b?.name||"";
   document.getElementById("b-type").value=b?.type||"1x";
+  document.getElementById("b-weight").value=b?.max_weight_kg||"";
+  document.getElementById("b-private").value=b?.is_private===true?"true":"false";
   document.getElementById("b-active").value=b?.active===false?"false":"true";
   const ps=document.getElementById("b-primary-squad");
   const primary=b?.boat_squads?.find(bs=>bs.is_primary);
@@ -641,13 +662,15 @@ async function saveBoat(){
   const name=document.getElementById("b-name").value.trim();
   const type=document.getElementById("b-type").value;
   const active=document.getElementById("b-active").value==="true";
+  const maxWeight=document.getElementById("b-weight").value;
+  const isPrivate=document.getElementById("b-private").value==="true";
   const primarySquadId=document.getElementById("b-primary-squad").value;
   if(!name)return alert("Boat name is required");
   let boatId=id;
   if(id){
-    await sb.from("boats").update({name,type,active}).eq("id",id);
+    await sb.from("boats").update({name,type,active,max_weight_kg:maxWeight?parseInt(maxWeight):null,is_private:isPrivate}).eq("id",id);
   }else{
-    const{data,error}=await sb.from("boats").insert({name,type,active}).select().single();
+    const{data,error}=await sb.from("boats").insert({name,type,active,max_weight_kg:maxWeight?parseInt(maxWeight):null,is_private:isPrivate}).select().single();
     if(error)return alert("Error: "+error.message);
     boatId=data.id;
   }
