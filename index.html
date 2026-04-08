@@ -11,7 +11,7 @@
 <style>
 :root{--green:#2d8653;--green-dark:#1a5c38;--green-light:#e8f5ee;--text:#1a2e22;--text-muted:#5a7a65;--border:#c8e0d0;--surface2:#f4faf6;--radius:12px;--nav-h:64px;--font:"'Georgia'",serif;--font-ui:-apple-system,BlinkMacSystemFont,"'Segoe UI'",sans-serif}
 *{box-sizing:border-box;margin:0;padding:0}
-body{font-family:var(--font-ui);background:var(--surface2);color:var(--text);min-height:100vh;max-width:430px;margin:0 auto}
+body{font-family:var(--font-ui);background:var(--surface2);color:var(--text);max-width:430px;margin:0 auto}
 #auth-screen{display:flex;flex-direction:column;min-height:100vh;background:var(--green)}
 .auth-hero{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:2rem;color:white}
 .auth-logo{width:80px;height:80px;background:white;border-radius:50%;display:flex;align-items:center;justify-content:center;margin-bottom:1.5rem}
@@ -39,7 +39,7 @@ body{font-family:var(--font-ui);background:var(--surface2);color:var(--text);min
 .topbar h1{font-family:var(--font);font-size:16px;font-weight:700;line-height:1.2}
 .topbar h1 span{display:block;font-size:11px;font-weight:400;opacity:.8;font-family:var(--font-ui);letter-spacing:.1em;text-transform:uppercase}
 .topbar-avatar{width:34px;height:34px;border-radius:50%;background:rgba(255,255,255,.25);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px;cursor:pointer;border:2px solid rgba(255,255,255,.5)}
-.content{flex:1;padding-bottom:calc(var(--nav-h) + 2rem)}
+.content{flex:1;padding-bottom:calc(var(--nav-h) + 2rem);overflow-y:visible}
 .bottom-nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:430px;height:var(--nav-h);background:white;border-top:1px solid var(--border);display:flex;align-items:center;z-index:100}
 .nav-item{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;padding:8px 0;cursor:pointer;color:var(--text-muted);border:none;background:none;font-family:var(--font-ui)}
 .nav-item.active{color:var(--green)}
@@ -122,7 +122,7 @@ body{font-family:var(--font-ui);background:var(--surface2);color:var(--text);min
 </style>
 </head>
 <body>
-<div id="auth-screen">
+<div id="auth-screen" style="display:none">
   <div class="auth-hero">
     <div class="auth-logo"><svg viewBox="0 0 24 24" fill="#2d8653"><polygon points="12,2 15.09,8.26 22,9.27 17,14.14 18.18,21.02 12,17.77 5.82,21.02 7,14.14 2,9.27 8.91,8.26"/></svg></div>
     <h1>Maidenhead<br>Rowing Club</h1>
@@ -360,7 +360,13 @@ async function signOut(){
   document.getElementById("auth-screen").style.display="flex";
 }
 
-sb.auth.getSession().then(({data:{session}})=>{if(session)onSignedIn(session.user);});
+sb.auth.getSession().then(({data:{session}})=>{
+  if(session){
+    onSignedIn(session.user);
+  } else {
+    document.getElementById("auth-screen").style.display="flex";
+  }
+});
 
 function navTo(page,el){
   document.querySelectorAll(".page").forEach(p=>p.classList.remove("active"));
