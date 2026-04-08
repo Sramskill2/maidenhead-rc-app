@@ -375,6 +375,7 @@ function navTo(page,el){
   document.querySelectorAll(".nav-item").forEach(n=>n.classList.remove("active"));
   document.getElementById("page-"+page).classList.add("active");
   el.classList.add("active");
+  window.scrollTo(0,0);
   if(page==="water")initWaterBooking();
   else if(page==="timetable")initTimetable();
   else if(page==="chat")loadChat();
